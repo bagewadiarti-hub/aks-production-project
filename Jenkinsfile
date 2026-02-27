@@ -24,7 +24,7 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 dir('infra') {
-                    sh 'terraform init'
+                    bat 'terraform init'
                 }
             }
         }
@@ -32,7 +32,7 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir('infra') {
-                    sh 'terraform plan -var-file=../environments/prod.tfvars'
+                    bat 'terraform plan -var-file=../environments/prod.tfvars'
                 }
             }
         }
@@ -40,44 +40,44 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir('infra') {
-                    sh 'terraform apply -auto-approve -var-file=../environments/prod.tfvars'
+                    bat 'terraform apply -auto-approve -var-file=../environments/prod.tfvars'
                 }
             }
         }
 
         stage('Azure Login') {
             steps {
-                sh '''
-                az login --service-principal \
-                  -u $ARM_CLIENT_ID \
-                  -p $ARM_CLIENT_SECRET \
-                  --tenant $ARM_TENANT_ID
+                bat '''
+                az login --service-principal ^
+                  -u %ARM_CLIENT_ID% ^
+                  -p %ARM_CLIENT_SECRET% ^
+                  --tenant %ARM_TENANT_ID%
                 '''
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:latest ./app'
+                bat 'docker build -t %IMAGE_NAME%:latest app'
             }
         }
 
         stage('Push Image to ACR') {
             steps {
-                sh '''
-                az acr login --name $ACR_NAME
-                docker tag $IMAGE_NAME:latest $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
-                docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+                bat '''
+                az acr login --name %ACR_NAME%
+                docker tag %IMAGE_NAME%:latest %ACR_NAME%.azurecr.io/%IMAGE_NAME%:latest
+                docker push %ACR_NAME%.azurecr.io/%IMAGE_NAME%:latest
                 '''
             }
         }
 
         stage('Get AKS Credentials') {
             steps {
-                sh '''
-                az aks get-credentials \
-                  --resource-group $RESOURCE_GROUP \
-                  --name $AKS_NAME \
+                bat '''
+                az aks get-credentials ^
+                  --resource-group %RESOURCE_GROUP% ^
+                  --name %AKS_NAME% ^
                   --overwrite-existing
                 '''
             }
@@ -85,7 +85,7 @@ pipeline {
 
         stage('Deploy Helm Chart') {
             steps {
-                sh 'helm upgrade --install myapp ./helm/myapp'
+                bat 'helm upgrade --install myapp helm/myapp'
             }
         }
     }
