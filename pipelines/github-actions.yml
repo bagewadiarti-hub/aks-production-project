@@ -1,0 +1,45 @@
+name: Deploy AKS Production
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: infra/
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -var-file=../environments/prod.tfvars
+      working-directory: infra/
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Build Image
+      run: docker build -t myapp:latest ./app
+
+    - name: Push Image
+      run: |
+        az acr login --name aksprodacr123
+        docker tag myapp:latest aksprodacr123.azurecr.io/myapp:latest
+        docker push aksprodacr123.azurecr.io/myapp:latest
+
+    - name: Get AKS Credentials
+      run: az aks get-credentials --resource-group aks-prod-rg --name prod-aks-cluster
+
+    - name: Deploy Helm
+      run: helm upgrade --install myapp ./helm/myapp
