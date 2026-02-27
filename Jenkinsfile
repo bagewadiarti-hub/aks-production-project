@@ -1,0 +1,101 @@
+pipeline {
+    agent any
+
+    environment {
+        ARM_CLIENT_ID       = credentials('azure-client-id')
+        ARM_CLIENT_SECRET   = credentials('azure-client-secret')
+        ARM_TENANT_ID       = credentials('azure-tenant-id')
+        ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
+
+        ACR_NAME = "aksprodacr123"
+        RESOURCE_GROUP = "aks-prod-rg"
+        AKS_NAME = "prod-aks-cluster"
+        IMAGE_NAME = "myapp"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                dir('infra') {
+                    sh 'terraform init'
+                }
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                dir('infra') {
+                    sh 'terraform plan -var-file=../environments/prod.tfvars'
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                dir('infra') {
+                    sh 'terraform apply -auto-approve -var-file=../environments/prod.tfvars'
+                }
+            }
+        }
+
+        stage('Azure Login') {
+            steps {
+                sh '''
+                az login --service-principal \
+                  -u $ARM_CLIENT_ID \
+                  -p $ARM_CLIENT_SECRET \
+                  --tenant $ARM_TENANT_ID
+                '''
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t $IMAGE_NAME:latest ./app'
+            }
+        }
+
+        stage('Push Image to ACR') {
+            steps {
+                sh '''
+                az acr login --name $ACR_NAME
+                docker tag $IMAGE_NAME:latest $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+                docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:latest
+                '''
+            }
+        }
+
+        stage('Get AKS Credentials') {
+            steps {
+                sh '''
+                az aks get-credentials \
+                  --resource-group $RESOURCE_GROUP \
+                  --name $AKS_NAME \
+                  --overwrite-existing
+                '''
+            }
+        }
+
+        stage('Deploy Helm Chart') {
+            steps {
+                sh 'helm upgrade --install myapp ./helm/myapp'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'AKS deployment successful 🚀'
+        }
+        failure {
+            echo 'Deployment failed ❌'
+        }
+    }
+}
