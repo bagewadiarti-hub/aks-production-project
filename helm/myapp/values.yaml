@@ -1,0 +1,9 @@
+replicaCount: 2
+
+image:
+  repository: aksprodacr123.azurecr.io/myapp
+  tag: latest
+
+service:
+  type: LoadBalancer
+  port: 80
