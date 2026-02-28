@@ -1,6 +1,7 @@
-location = "westus2"
-resource_group_name = "aks-prod-rg"
-aks_name = "prod-aks-cluster"
-acr_name = "aksprodacr123"
-node_count = 3
-vm_size = "Standard_L2aos_v4"
+location     = "westus2"
+rg_name      = "prod-rg"
+cluster_name = "prod-aks"
+dns_prefix   = "prodaks"
+acr_name     = "prodacr12345"
+node_count   = 2
+vm_size      = "Standard_L2aos_v4"
