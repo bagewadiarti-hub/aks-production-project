@@ -7,9 +7,9 @@ pipeline {
         ARM_TENANT_ID       = credentials('azure-tenant-id')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
 
-        ACR_NAME = "aksprodacr123"
-        RESOURCE_GROUP = "aks-prod-rg"
-        AKS_NAME = "prod-aks-cluster"
+        ACR_NAME = azurerm_resource_group.rg.name
+        RESOURCE_GROUP = azurerm_resource_group.rg.name
+        AKS_NAME = var.acr_name
         IMAGE_NAME = "myapp"
     }
 
