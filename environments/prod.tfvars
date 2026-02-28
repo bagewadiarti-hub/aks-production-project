@@ -5,3 +5,5 @@ dns_prefix   = "prodaks"
 acr_name     = "prodacr12345"
 node_count   = 2
 vm_size      = "Standard_L2aos_v4"
+min_node_count      = 1
+max_node_count      = 3
