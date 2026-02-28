@@ -24,12 +24,22 @@ variable "acr_name" {
 }
 
 variable "node_count" {
-  description = "Node count if autoscaling disabled"
+  description = "Initial node count"
   type        = number
-  default     = 1
 }
 
 variable "vm_size" {
-  description = "VM size for node pool"
+  description = "VM size for AKS nodes"
   type        = string
+}
+
+# Recommended additions for autoscaling
+variable "min_node_count" {
+  description = "Minimum nodes for autoscaling"
+  type        = number
+}
+
+variable "max_node_count" {
+  description = "Maximum nodes for autoscaling"
+  type        = number
 }
