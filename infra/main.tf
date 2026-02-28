@@ -5,7 +5,7 @@ resource "azurerm_resource_group" "rg" {
 
 resource "azurerm_container_registry" "acr" {
   name                = var.acr_name
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = var.rg_name
   location            = var.location
   sku                 = "Standard"
   admin_enabled       = true
@@ -18,11 +18,12 @@ resource "azurerm_kubernetes_cluster" "aks" {
   dns_prefix          = var.dns_prefix
 
   default_node_pool {
-    name                = "system"
-    vm_size             = "Standard_DS2_v2"
+    name                = "default"
+    vm_size             = var.vm_size
+    node_count          = var.node_count
     enable_auto_scaling = true
-    min_count           = 1
-    max_count           = 3
+    min_count           = var.min_node_count
+    max_count           = var.max_node_count
   }
 
   identity {
