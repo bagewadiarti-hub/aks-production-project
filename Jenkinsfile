@@ -47,8 +47,8 @@ variable "max_node_count" {
   description = "Maximum nodes for autoscaling"
   type        = number
 }', defaultValue: 'prodacr12345')
-        string(name: 'RESOURCE_GROUP', defaultValue: 'prod-rg')
-        string(name: 'AKS_NAME', defaultValue: 'prod-aks')
+        string(name: 'rg_name', defaultValue: 'prod-rg')
+        string(name: 'cluster_name', defaultValue: 'prod-aks')
         string(name: 'IMAGE_NAME', defaultValue: 'myapp')
     }
 
