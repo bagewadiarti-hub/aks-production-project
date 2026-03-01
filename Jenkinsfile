@@ -1,7 +1,6 @@
 pipeline {
 agent any
 
-```
 parameters {
     string(name: 'ACR_NAME', defaultValue: 'prodacr12345', description: 'Azure Container Registry Name')
     string(name: 'RESOURCE_GROUP', defaultValue: 'prod-rg', description: 'Azure Resource Group')
