@@ -34,13 +34,13 @@ stages {
     stage('Terraform Plan') {
         steps {
             dir('infra') {
-                bat '''
+                bat
                 terraform plan ^
                   -var="acr_name=%ACR_NAME%" ^
                   -var="rg_name=%RESOURCE_GROUP%" ^
                   -var="aks_name=%AKS_NAME%" ^
                   -var-file=../environments/prod.tfvars
-                '''
+             
             }
         }
     }
@@ -48,25 +48,25 @@ stages {
     stage('Terraform Apply') {
         steps {
             dir('infra') {
-                bat '''
+                bat
                 terraform apply -auto-approve ^
                   -var="acr_name=%ACR_NAME%" ^
                   -var="rg_name=%RESOURCE_GROUP%" ^
                   -var="aks_name=%AKS_NAME%" ^
                   -var-file=../environments/prod.tfvars
-                '''
+            
             }
         }
     }
 
     stage('Azure Login') {
         steps {
-            bat '''
+            bat
             az login --service-principal ^
               -u %ARM_CLIENT_ID% ^
               -p %ARM_CLIENT_SECRET% ^
               --tenant %ARM_TENANT_ID%
-            '''
+            
         }
     }
 
@@ -78,32 +78,32 @@ stages {
 
     stage('Push Image to ACR') {
         steps {
-            bat '''
+            bat
             az acr login --name %ACR_NAME%
             docker tag %IMAGE_NAME%:latest %ACR_NAME%.azurecr.io/%IMAGE_NAME%:latest
             docker push %ACR_NAME%.azurecr.io/%IMAGE_NAME%:latest
-            '''
+            
         }
     }
 
     stage('Get AKS Credentials') {
         steps {
-            bat '''
+            bat 
             az aks get-credentials ^
               --resource-group %RESOURCE_GROUP% ^
               --name %AKS_NAME% ^
               --overwrite-existing
-            '''
+          
         }
     }
 
     stage('Deploy Helm Chart') {
         steps {
-            bat '''
+            bat
             helm upgrade --install myapp helm/myapp ^
               --set image.repository=%ACR_NAME%.azurecr.io/%IMAGE_NAME% ^
               --set image.tag=latest
-            '''
+           
         }
     }
 }
@@ -116,6 +116,5 @@ post {
         echo 'Deployment failed ❌'
     }
 }
-```
 
 }
