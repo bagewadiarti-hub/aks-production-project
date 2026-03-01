@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     parameters {
-        string(name: 'ACR_NAME', defaultValue: 'myacr')
-        string(name: 'RESOURCE_GROUP', defaultValue: 'my-rg')
-        string(name: 'AKS_NAME', defaultValue: 'my-aks')
+        string(name: 'ACR_NAME', defaultValue: 'prodacr12345')
+        string(name: 'RESOURCE_GROUP', defaultValue: 'prod-rg')
+        string(name: 'AKS_NAME', defaultValue: 'prod-aks')
         string(name: 'IMAGE_NAME', defaultValue: 'myapp')
     }
 
