@@ -1,17 +1,22 @@
 pipeline {
     agent any
 
+    tools {
+        terraform 'terraform'
+    }
+
     options {
         timestamps()
         disableConcurrentBuilds()
+        timeout(time: 60, unit: 'MINUTES')
     }
 
     parameters {
-        string(name: 'ACR_NAME', defaultValue: 'prodacr12345', description: 'Azure Container Registry name')
-        string(name: 'RESOURCE_GROUP', defaultValue: 'prod-rg', description: 'Azure Resource Group')
-        string(name: 'CLUSTER_NAME', defaultValue: 'prod-aks', description: 'AKS Cluster Name')
-        string(name: 'IMAGE_NAME', defaultValue: 'myapp', description: 'Docker image name')
-        booleanParam(name: 'AUTO_APPROVE_TERRAFORM', defaultValue: false, description: 'Skip manual approval for Terraform apply')
+        string(name: 'ACR_NAME', defaultValue: 'prodacr12345')
+        string(name: 'RESOURCE_GROUP', defaultValue: 'prod-rg')
+        string(name: 'CLUSTER_NAME', defaultValue: 'prod-aks')
+        string(name: 'IMAGE_NAME', defaultValue: 'myapp')
+        booleanParam(name: 'AUTO_APPROVE_TERRAFORM', defaultValue: false)
     }
 
     environment {
@@ -22,6 +27,16 @@ pipeline {
     }
 
     stages {
+
+        stage('Validate Tools') {
+            steps {
+                bat 'terraform -version'
+                bat 'az version'
+                bat 'docker --version'
+                bat 'helm version'
+                bat 'kubectl version --client'
+            }
+        }
 
         stage('Checkout Code') {
             steps {
@@ -41,7 +56,7 @@ pipeline {
             steps {
                 dir('infra') {
                     bat """
-                    terraform plan ^
+                    terraform plan -out=tfplan ^
                       -var="acr_name=${params.ACR_NAME}" ^
                       -var="rg_name=${params.RESOURCE_GROUP}" ^
                       -var="cluster_name=${params.CLUSTER_NAME}" ^
@@ -53,7 +68,7 @@ pipeline {
 
         stage('Manual Approval') {
             when {
-                expression { return !params.AUTO_APPROVE_TERRAFORM }
+                expression { !params.AUTO_APPROVE_TERRAFORM }
             }
             steps {
                 input message: 'Approve Terraform Apply?', ok: 'Apply'
@@ -63,31 +78,29 @@ pipeline {
         stage('Terraform Apply') {
             steps {
                 dir('infra') {
-                    bat """
-                    terraform apply -auto-approve ^
-                      -var="acr_name=${params.ACR_NAME}" ^
-                      -var="rg_name=${params.RESOURCE_GROUP}" ^
-                      -var="cluster_name=${params.CLUSTER_NAME}" ^
-                      -var-file=../environments/prod.tfvars
-                    """
+                    bat 'terraform apply tfplan'
                 }
             }
         }
 
         stage('Azure Login') {
             steps {
-                bat """
-                az login --service-principal ^
-                  -u %ARM_CLIENT_ID% ^
-                  -p %ARM_CLIENT_SECRET% ^
-                  --tenant %ARM_TENANT_ID%
-                """
+                retry(3) {
+                    bat """
+                    az login --service-principal ^
+                      -u %ARM_CLIENT_ID% ^
+                      -p %ARM_CLIENT_SECRET% ^
+                      --tenant %ARM_TENANT_ID%
+
+                    az account set --subscription %ARM_SUBSCRIPTION_ID%
+                    """
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                bat "docker build -t ${params.IMAGE_NAME}:latest app"
+                bat "docker build -t ${params.IMAGE_NAME}:latest .\\app"
             }
         }
 
@@ -115,8 +128,15 @@ pipeline {
                 bat """
                 helm upgrade --install myapp helm/myapp ^
                   --set image.repository=${params.ACR_NAME}.azurecr.io/${params.IMAGE_NAME} ^
-                  --set image.tag=latest
+                  --set image.tag=latest ^
+                  --wait --timeout 5m
                 """
+            }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                bat 'kubectl rollout status deployment/myapp'
             }
         }
     }
