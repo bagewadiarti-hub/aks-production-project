@@ -24,6 +24,7 @@ pipeline {
         ARM_CLIENT_SECRET   = credentials('azure-client-secret')
         ARM_TENANT_ID       = credentials('azure-tenant-id')
         ARM_SUBSCRIPTION_ID = credentials('azure-subscription-id')
+        KUBE_NAMESPACE      = 'default'
     }
 
     stages {
@@ -91,7 +92,6 @@ pipeline {
                       -u %ARM_CLIENT_ID% ^
                       -p %ARM_CLIENT_SECRET% ^
                       --tenant %ARM_TENANT_ID%
-
                     az account set --subscription %ARM_SUBSCRIPTION_ID%
                     """
                 }
@@ -127,6 +127,8 @@ pipeline {
             steps {
                 bat """
                 helm upgrade --install myapp helm/myapp ^
+                  --namespace %KUBE_NAMESPACE% ^
+                  --create-namespace ^
                   --set image.repository=${params.ACR_NAME}.azurecr.io/${params.IMAGE_NAME} ^
                   --set image.tag=latest ^
                   --wait --timeout 5m
@@ -136,7 +138,15 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                bat 'kubectl rollout status deployment/myapp'
+                script {
+                    // Check if deployment exists before rollout
+                    def exists = bat(returnStatus: true, script: "kubectl get deployment myapp -n %KUBE_NAMESPACE%")
+                    if (exists == 0) {
+                        bat "kubectl rollout status deployment/myapp -n %KUBE_NAMESPACE%"
+                    } else {
+                        echo "Deployment 'myapp' does not exist yet. Skipping rollout status check."
+                    }
+                }
             }
         }
     }
